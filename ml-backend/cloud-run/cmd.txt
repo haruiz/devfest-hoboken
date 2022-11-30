@@ -1,0 +1,14 @@
+docker build -t iris_model .
+docker run --name iris_model_api -d -p 8080:8080 -t iris_model 
+
+# moving the container to the cloud
+gcloud auth login
+gcloud init
+glcoud config list
+
+ gcloud auth configure-docker 
+
+gcloud services enable artifactregistry.googleapis.com 
+gcloud services enable cloudbuild.googleapis.com
+gcloud builds submit --tag gcr.io/iris-model
+gcloud run deploy iris-model-api --image gcr.io/iris-mode

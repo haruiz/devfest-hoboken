@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Object detection demo</title>
+    <!-- Load TensorFlow.js. This is required to use coco-ssd model. -->
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"> </script>
+
+    <style>
+        .center {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100%;
+        }
+
+        canvas{
+            background-color: black;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="center">
+        <canvas id="canvas" width="300" height="300"></canvas>
+    </div>
+    <div class="center" style="margin-top: 10px;">
+        <input id="fileImage" type="file" disabled/>
+        <button id="btnClassify" disabled>Classify Image</button>
+    </div>
+ 
+    <script>
+    
+        
+        const main = async () => {
+            const btnClassify = document.getElementById("btnClassify");
+            const fileImage = document.getElementById("fileImage");
+            let canvas = document.getElementById("canvas");
+            let ctx = canvas.getContext("2d");
+
+            console.log("loading model...!");
+            const model = await tf.loadLayersModel("model/model.json");
+            console.log("model loaded successfully");
+            fileImage.disabled = false;
+            const labels = ['dandelion', 'daisy', 'tulips', 'sunflowers', 'roses']
+
+            const displayImage = (base64Img) => {
+                const img = new Image();
+                img.src = base64Img;
+                img.onload = (evt) => {
+                    var hRatio = canvas.width / img.width;
+                    var vRatio = canvas.height / img.height;
+                    var ratio = Math.min(hRatio, vRatio);
+                    var centerShift_x = (canvas.width - img.width * ratio) / 2;
+                    var centerShift_y = (canvas.height - img.height * ratio) / 2;
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    ctx.drawImage(img, 0, 0, img.width, img.height, centerShift_x, centerShift_y, img.width * ratio, img.height * ratio);
+                }
+            };
+
+            fileImage.onchange = (evt) => {
+                var allowedExtReg = /(\.jpg|\.jpeg|\.png)$/i;
+                let files = evt.target.files;
+                if (files && files.length) {
+                    let myFile = files[0];
+                    let myFileName = myFile.name;
+                    // check file ext
+                    if (allowedExtReg.exec(myFileName)) {
+                        let fr = new FileReader()
+                        fr.readAsDataURL(myFile);
+                        fr.onload = (evt) => {
+                            btnClassify.disabled = false;
+                            displayImage(evt.target.result);
+                        }
+                    }
+                }
+            };
+
+            btnClassify.onclick = async () => {
+                let imageTensor = tf.browser.fromPixels(canvas);
+                imageTensor = imageTensor.resizeBilinear([180, 180]);
+                imageTensor = imageTensor.expandDims(0);
+                let scores = await model.predict(imageTensor)
+                let probs = tf.softmax(scores);
+                let probsAsArray = await probs.as1D().data()
+                let classIdx = await probs.as1D().argMax().data();
+                console.log(labels[classIdx[0]], probsAsArray[classIdx[0]]);
+            }
+
+            
+        }
+        window.onload = main;
+    </script>
+</body>
+
+</html>

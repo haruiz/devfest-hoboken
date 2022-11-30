@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@2.0.0/dist/tf.min.js"></script>
+</head>
+<body>
+    <script>
+        const main = async () => {
+            tf.setBackend('cpu');
+            console.log(`tensorflow.js is using backend: ${tf.getBackend()}`);
+        
+            const csvUrl = "datasets/iris.csv";
+            const trainingDataset = tf.data.csv(
+                csvUrl, {
+                columnConfigs: {
+                    species: {
+                        isLabel: true
+                    }
+                }
+            });
+
+            const colNames = await trainingDataset.columnNames();
+            const numFeatures = colNames.length - 1;
+            const numSamples = 150;
+
+            const transformDataset = trainingDataset.map(
+                ({ xs, ys }) => {
+                    const hotEncodedLabel = [
+                        ys.species === "setosa" ? 1 : 0,
+                        ys.species === "virginica" ? 1 : 0,
+                        ys.species === "versicolor" ? 1 : 0
+                    ];
+                    return { 
+                        xs: Object.values(xs), 
+                        ys: Object.values(hotEncodedLabel) }
+                }).batch(10);
+
+                await transformDataset.forEachAsync(async({xs, ys}) => {
+                    console.log(await ys.data())
+                });
+
+                // create model
+                const model = tf.sequential()   
+
+                  // input layer
+                model.add(
+                    tf.layers.dense({
+                        inputShape: [numFeatures],
+                        activation: "relu",
+                        units: 5
+                    })
+                );
+
+                // output layer
+                model.add(
+                    tf.layers.dense({
+                        activation: "softmax",
+                        units: 3
+                    })
+                );
+
+                // compile model
+                model.compile({
+                    loss: "categoricalCrossentropy",
+                    optimizer: tf.train.adam(0.06)
+                });
+
+                model.summary();
+
+            // train model
+            await model.fitDataset(
+                transformDataset, {
+                epochs: 100,
+                callbacks: {
+                    onEpochEnd: (epoch, metrics) => {
+                        console.log(metrics);
+                        console.log(`current epoch: ${epoch}, Loss: ${metrics.loss}`)
+                    }
+                }
+            });
+
+            const testSample = tf.tensor2d([4.4, 2.9, 1.4, 0.2], [1, 4])
+            // make the prediction
+            const prediction = model.predict(testSample);
+            // obtain the index of the highest prediction
+            const pIndex = tf.argMax(prediction, axis = 1).dataSync();
+            // print the class name
+            const classNames = ["Setosa", "Virginica", "Versicolor"];
+            console.log(classNames[pIndex]);
+
+        
+        }
+
+        document.addEventListener("DOMContentLoaded", main);
+    </script>
+</body>
+</html>
