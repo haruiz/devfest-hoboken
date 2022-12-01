@@ -43,8 +43,8 @@ class MainActivity : AppCompatActivity() {
         val txtText = findViewById<EditText>(R.id.txtClassify)
         val btnClassify = findViewById<Button>(R.id.btnClassify)
         btnClassify.setOnClickListener {
-            //classifyUsingTaskLibrary(txtText)
-            classifyUsingTfLite(txtText)
+            classifyUsingTaskLibrary(txtText)
+            // classifyUsingTfLite(txtText)
         }
 
     }
